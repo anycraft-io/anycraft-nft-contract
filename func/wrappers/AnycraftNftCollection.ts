@@ -53,6 +53,22 @@ export function anycraftNftCollectionConfigToCell(config: AnycraftNftCollectionC
         .endCell();
 }
 
+export function nftMessageToCell(itemContent: string, itemOwnerAddress: Address, itemIndex: number, amount: bigint) {
+    const nftContent = beginCell();
+    nftContent.storeBuffer(Buffer.from(itemContent));
+
+    const nftMessage = beginCell();
+
+    nftMessage.storeAddress(itemOwnerAddress);
+    nftMessage.storeRef(nftContent);
+
+    return beginCell()
+        .storeUint(itemIndex, 64)
+        .storeCoins(amount)
+        .storeRef(nftMessage)
+        .endCell();
+}
+
 export class AnycraftNftCollection implements Contract {
     constructor(readonly address: Address, readonly init?: { code: Cell; data: Cell }) {
     }
@@ -73,5 +89,33 @@ export class AnycraftNftCollection implements Contract {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell().endCell(),
         });
+    }
+
+    async sendDeployNft(
+        provider: ContractProvider,
+        via: Sender,
+        value: bigint,
+        signature: Buffer,
+        nftMessageCell: Cell,
+    ) {
+        await provider.internal(via, {
+            value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(1, 32)
+                .storeUint(0, 64)
+                .storeBuffer(signature)
+                .storeRef(nftMessageCell)
+                .endCell(),
+        });
+    }
+
+    async getCollectionData(provider: ContractProvider) {
+        const result = await provider.get('get_collection_data', []);
+        return {
+            next_item_index: result.stack.readNumber(),
+            content: result.stack.readCellOpt(),
+            owner_address: result.stack.readAddress(),
+        };
     }
 }

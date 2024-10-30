@@ -1,0 +1,11 @@
+{
+  "name": "💨 Steam",
+  "description": "This is a one-of-a-kind item, first discovered and crafted in Anycraft. As a Gold Star item, it represents a truly unique creation that no other player has seen or crafted before. The owner of this NFT can bring the item back into Anycraft for use in new crafting adventures.",
+  "image": "https://anycraft-public.s3.eu-north-1.amazonaws.com/nft/images/test_image.png",
+  "attributes": [
+    {
+      "trait_type": "Rarity",
+      "value": "Brilliant"
+    }
+  ]
+}
