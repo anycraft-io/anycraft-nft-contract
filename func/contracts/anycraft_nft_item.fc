@@ -1,3 +1,7 @@
+#include "imports/stdlib.fc";
+#include "imports/params.fc";
+#include "imports/op-codes.fc";
+
 ;;
 ;;  TON NFT Item Smart Contract
 ;;
