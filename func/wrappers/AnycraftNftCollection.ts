@@ -65,13 +65,14 @@ export function anycraftNftCollectionConfigToCell(config: AnycraftNftCollectionC
 }
 
 export function nftMessageToCell(itemContent: string, itemOwnerAddress: Address, itemIndex: number, amount: bigint) {
-    const nftContent = beginCell();
-    nftContent.storeBuffer(Buffer.from(itemContent));
+    const nftContent = beginCell()
+        .storeBuffer(Buffer.from(itemContent))
+        .endCell();
 
-    const nftMessage = beginCell();
-
-    nftMessage.storeAddress(itemOwnerAddress);
-    nftMessage.storeRef(nftContent);
+    const nftMessage = beginCell()
+        .storeAddress(itemOwnerAddress)
+        .storeRef(nftContent)
+        .endCell();
 
     return beginCell()
         .storeUint(itemIndex, 64)
@@ -109,15 +110,18 @@ export class AnycraftNftCollection implements Contract {
         signature: Buffer,
         nftMessageCell: Cell,
     ) {
+        const body = beginCell()
+            .storeUint(1, 32)
+            .storeUint(0, 64)
+            .storeBuffer(signature)
+            .storeRef(nftMessageCell)
+            .endCell()
+        // console.log(body.toBoc().toString('base64'))
+
         await provider.internal(via, {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(1, 32)
-                .storeUint(0, 64)
-                .storeBuffer(signature)
-                .storeRef(nftMessageCell)
-                .endCell(),
+            body: body,
         });
     }
 
