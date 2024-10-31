@@ -2,10 +2,11 @@ import {toNano} from '@ton/core';
 import {AnycraftNftCollection} from '../wrappers/AnycraftNftCollection';
 import {compile, NetworkProvider} from '@ton/blueprint';
 import {keyPairFromSeed} from '@ton/crypto';
-import seed from './seed.json';
+import key from './key.json';
 
 export async function run(provider: NetworkProvider) {
-    const anycraftKeyPair = keyPairFromSeed(Buffer.from(seed.seed));
+    const seed = Buffer.from(key.seedHex, "hex");
+    const anycraftKeyPair = keyPairFromSeed(seed);
 
     const nftCollection = provider.open(
         AnycraftNftCollection.createFromConfig(
