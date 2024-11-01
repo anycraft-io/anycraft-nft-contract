@@ -14,7 +14,7 @@ export async function run(provider: NetworkProvider) {
                 ownerAddress: provider.sender().address!,
                 nextItemIndex: 0,
                 adminContractAddress: provider.sender().address!,
-                collectionContent: 'https://anycraft-public.s3.eu-north-1.amazonaws.com/nft/collection.json',
+                collectionContent: 'https://anycraft-public.s3.eu-north-1.amazonaws.com/nft/assets/collection.json',
                 commonContent: 'https://anycraft-public.s3.eu-north-1.amazonaws.com/nft/items/',
                 nftItemCode: await compile('AnycraftNftItem'),
                 royaltyParams: {

@@ -38,7 +38,7 @@ describe('AnycraftNftCollection', () => {
                     adminContractAddress: admin.address,
                     anycraftPublicKey: anycraftKeyPair.publicKey,
                     ownerAddress: deployer.address,
-                    collectionContent: 'https://anycraft-public.s3.eu-north-1.amazonaws.com/nft/collection.json',
+                    collectionContent: 'https://anycraft-public.s3.eu-north-1.amazonaws.com/nft/assets/collection.json',
                     commonContent: 'https://anycraft-public.s3.eu-north-1.amazonaws.com/nft/items/',
                     nextItemIndex: 0,
                     royaltyParams: {

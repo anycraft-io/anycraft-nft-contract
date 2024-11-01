@@ -11,11 +11,11 @@ export async function run(provider: NetworkProvider) {
     );
 
     const nextItemIndex = (await nftCollection.getCollectionData()).next_item_index;
-    const toSign = nftMessageToCell('test_item.json', provider.sender().address!, nextItemIndex, toNano('0.01'));
+    const nftItemCell = nftMessageToCell('test_item.json', provider.sender().address!, nextItemIndex, toNano('0.01'));
 
     const seed = Buffer.from(key.seedHex, "hex");
     const keyPair = keyPairFromSeed(seed);
-    const signature = sign(toSign.hash(), keyPair.secretKey);
+    const signature = sign(nftItemCell.hash(), keyPair.secretKey);
 
-    await nftCollection.sendDeployNft(provider.sender(), toNano('0.07'), signature, toSign);
+    await nftCollection.sendDeployNft(provider.sender(), toNano('0.07'), signature, nftItemCell);
 }
