@@ -6,16 +6,17 @@ import {keyPairFromSeed, sign} from '@ton/crypto';
 
 export async function run(provider: NetworkProvider) {
     const ui = provider.ui();
-    const nftCollection = provider.open(
-        AnycraftNftCollection.createFromAddress(Address.parse(await ui.input('Nft Collection Address: '))),
-    );
+    const enteredAddress = await ui.input('Nft Collection Address: ');
+    const nftItemMeta = await ui.input('Meta json: ');
+    const collectionAddress = Address.parse(enteredAddress);
+    const nftCollection = provider.open(AnycraftNftCollection.createFromAddress(collectionAddress));
 
-    const nextItemIndex = (await nftCollection.getCollectionData()).next_item_index;
-    const nftItemCell = nftMessageToCell('test_item.json', provider.sender().address!, nextItemIndex, toNano('0.01'));
+    const nextItemIndex = (await nftCollection.getCollectionData()).nextItemIndex;
+    const nftItemCell = nftMessageToCell(nftItemMeta, provider.sender().address!, nextItemIndex, toNano('0.05'));
 
     const seed = Buffer.from(key.seedHex, "hex");
     const keyPair = keyPairFromSeed(seed);
     const signature = sign(nftItemCell.hash(), keyPair.secretKey);
 
-    await nftCollection.sendDeployNft(provider.sender(), toNano('0.07'), signature, nftItemCell);
+    await nftCollection.sendDeployNft(provider.sender(), toNano('0.1'), signature, nftItemCell);
 }

@@ -141,34 +141,58 @@ export class AnycraftNftCollection implements Contract {
             dict.set(nft.index, nft);
         }
 
+        const body = beginCell()
+            .storeUint(2, 32)
+            .storeUint(opts.queryId, 64)
+            .storeDict(dict)
+            .endCell();
+
         await provider.internal(via, {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().storeUint(2, 32).storeUint(opts.queryId, 64).storeDict(dict).endCell(),
+            body: body,
         });
     }
 
-    async sendChangeMianOwner(provider: ContractProvider, via: Sender, new_main_owner: Address) {
+    async sendChangeMainOwner(provider: ContractProvider, via: Sender, new_main_owner: Address) {
+        const body = beginCell()
+            .storeUint(3, 32)
+            .storeUint(0, 64)
+            .storeAddress(new_main_owner)
+            .endCell();
+
         await provider.internal(via, {
             value: toNano('0.01'),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().storeUint(3, 32).storeUint(0, 64).storeAddress(new_main_owner).endCell(),
+            body: body,
         });
     }
 
     async sendChangeFee(provider: ContractProvider, via: Sender, new_fee: bigint) {
+        const body = beginCell()
+            .storeUint(6, 32)
+            .storeUint(0, 64)
+            .storeCoins(new_fee)
+            .endCell();
+
         await provider.internal(via, {
             value: toNano('0.01'),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().storeUint(6, 32).storeUint(0, 64).storeCoins(new_fee).endCell(),
+            body: body,
         });
     }
 
     async sendChangePublicKey(provider: ContractProvider, via: Sender, publicKey: Buffer) {
+        const body = beginCell()
+            .storeUint(7, 32)
+            .storeUint(0, 64)
+            .storeBuffer(publicKey)
+            .endCell();
+
         await provider.internal(via, {
             value: toNano('0.01'),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().storeUint(7, 32).storeUint(0, 64).storeBuffer(publicKey).endCell(),
+            body: body,
         });
     }
 
@@ -194,27 +218,39 @@ export class AnycraftNftCollection implements Contract {
             .storeAddress(opts.royaltyAddress)
             .endCell();
 
+        const body = beginCell()
+            .storeUint(4, 32)
+            .storeUint(0, 64)
+            .storeRef(contentCell)
+            .storeRef(royaltyData)
+            .endCell();
+
         await provider.internal(via, {
             value: toNano('0.01'),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().storeUint(4, 32).storeUint(0, 64).storeRef(contentCell).storeRef(royaltyData).endCell(),
+            body: body,
         });
     }
 
     async sendWithdraw(provider: ContractProvider, via: Sender) {
+        const body = beginCell()
+            .storeUint(5, 32)
+            .storeUint(0, 64)
+            .endCell();
+
         await provider.internal(via, {
             value: toNano('0.01'),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().storeUint(5, 32).storeUint(0, 64).endCell(),
+            body: body,
         });
     }
 
     async getCollectionData(provider: ContractProvider) {
         const result = await provider.get('get_collection_data', []);
         return {
-            next_item_index: result.stack.readNumber(),
+            nextItemIndex: result.stack.readNumber(),
             content: result.stack.readCellOpt(),
-            owner_address: result.stack.readAddress(),
+            ownerAddress: result.stack.readAddress(),
         };
     }
 
@@ -228,7 +264,7 @@ export class AnycraftNftCollection implements Contract {
     async getAnycraftPublicKey(provider: ContractProvider) {
         const result = await provider.get('get_anycraft_public_key', []);
         return {
-            fee: result.stack.readBigNumber(),
+            publicKey: result.stack.readBigNumber(),
         };
     }
 }

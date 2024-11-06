@@ -19,7 +19,7 @@ describe('AnycraftNftCollection', () => {
     let user: SandboxContract<TreasuryContract>;
     let nftCollection: SandboxContract<AnycraftNftCollection>;
     let anycraftKeyPair: KeyPair;
-    let fee = toNano('0.49');
+    let fee = toNano('0.45');
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
@@ -97,7 +97,7 @@ describe('AnycraftNftCollection', () => {
     it('should not mint nft because value lower than fee', async () => {
         const nftCell = await newNftCell();
 
-        const mintResult = await mint(nftCell, '0.48');
+        const mintResult = await mint(nftCell, '0.449');
 
         expect(mintResult.transactions).toHaveTransaction({
             from: user.address,
@@ -108,7 +108,7 @@ describe('AnycraftNftCollection', () => {
     });
 
     it('should not mint nft because msg_value - fee < amount (to nft)', async () => {
-        const nftCell = await newNftCell('0.02');
+        const nftCell = await newNftCell('0.051');
 
         const mintResult = await mint(nftCell);
 
@@ -147,6 +147,17 @@ describe('AnycraftNftCollection', () => {
         expect(actualFee).toEqual(toNano(newFee));
     });
 
+    it('should not change fee because of not owner', async () => {
+        const changeFeeResult = await nftCollection.sendChangeFee(user.getSender(), toNano('1'));
+
+        expect(changeFeeResult.transactions).toHaveTransaction({
+            from: user.address,
+            to: nftCollection.address,
+            success: false,
+            exitCode: 401,
+        });
+    });
+
     it('should not mint nft because value lower than new fee', async () => {
         const newFee = '0.99';
         const nftCell = await newNftCell();
@@ -177,12 +188,12 @@ describe('AnycraftNftCollection', () => {
             return BigInt('0x' + buffer.toString('hex'));
         }
 
-        const newPublicKey = (await nftCollection.getAnycraftPublicKey()).fee;
+        const newPublicKey = (await nftCollection.getAnycraftPublicKey()).publicKey;
         expect(newPublicKey).toEqual(bufferToBigInt(newKeypair.publicKey));
     });
 
     it('should change owner', async () => {
-        const txResult = await nftCollection.sendChangeMianOwner(deployer.getSender(), user.address);
+        const txResult = await nftCollection.sendChangeMainOwner(deployer.getSender(), user.address);
 
         expect(txResult.transactions).toHaveTransaction({
             from: deployer.address,
@@ -190,12 +201,12 @@ describe('AnycraftNftCollection', () => {
             success: true,
         });
 
-        const newOwner = (await nftCollection.getCollectionData()).owner_address;
+        const newOwner = (await nftCollection.getCollectionData()).ownerAddress;
         expect(newOwner).toEqualAddress(user.address);
     });
 
-    async function newNftCell(networkFee: string = '0.01') {
-        const nextItemIndex = (await nftCollection.getCollectionData()).next_item_index;
+    async function newNftCell(networkFee: string = '0.05') {
+        const nextItemIndex = (await nftCollection.getCollectionData()).nextItemIndex;
         return nftMessageToCell('1.json', user.address, nextItemIndex, toNano(networkFee));
     }
 
