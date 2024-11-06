@@ -21,7 +21,6 @@ export type RoyaltyParams = {
 export type AnycraftNftCollectionConfig = {
     ownerAddress: Address;
     nextItemIndex: number;
-    adminContractAddress: Address;
     collectionContent: string;
     commonContent: string;
     nftItemCode: Cell;
@@ -49,7 +48,6 @@ export function anycraftNftCollectionConfigToCell(config: AnycraftNftCollectionC
         .storeAddress(config.ownerAddress)
         .storeUint(config.nextItemIndex, 64)
         .storeBuffer(config.anycraftPublicKey)
-        .storeAddress(config.adminContractAddress)
         .storeCoins(config.fee)
         .storeInt(-1, 8)
         .storeRef(buildAnycraftNftCollectionContentCell(config.collectionContent, config.commonContent))
@@ -162,7 +160,7 @@ export class AnycraftNftCollection implements Contract {
         await provider.internal(via, {
             value: toNano('0.01'),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().storeUint(7, 32).storeUint(0, 64).storeCoins(new_fee).endCell(),
+            body: beginCell().storeUint(6, 32).storeUint(0, 64).storeCoins(new_fee).endCell(),
         });
     }
 
@@ -170,7 +168,7 @@ export class AnycraftNftCollection implements Contract {
         await provider.internal(via, {
             value: toNano('0.01'),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().storeUint(8, 32).storeUint(0, 64).storeBuffer(publicKey).endCell(),
+            body: beginCell().storeUint(7, 32).storeUint(0, 64).storeBuffer(publicKey).endCell(),
         });
     }
 
@@ -208,19 +206,6 @@ export class AnycraftNftCollection implements Contract {
             value: toNano('0.01'),
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell().storeUint(5, 32).storeUint(0, 64).endCell(),
-        });
-    }
-
-    async sendChangeSecondOwner(provider: ContractProvider, via: Sender, new_second_owner: Address, flag: number) {
-        await provider.internal(via, {
-            value: toNano('0.01'),
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(6, 32)
-                .storeUint(0, 64)
-                .storeAddress(new_second_owner)
-                .storeInt(flag, 8)
-                .endCell(),
         });
     }
 

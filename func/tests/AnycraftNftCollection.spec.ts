@@ -16,7 +16,6 @@ describe('AnycraftNftCollection', () => {
 
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
-    let admin: SandboxContract<TreasuryContract>;
     let user: SandboxContract<TreasuryContract>;
     let nftCollection: SandboxContract<AnycraftNftCollection>;
     let anycraftKeyPair: KeyPair;
@@ -29,23 +28,21 @@ describe('AnycraftNftCollection', () => {
         anycraftKeyPair = keyPairFromSeed(seed);
 
         deployer = await blockchain.treasury('deployer');
-        admin = await blockchain.treasury('admin');
         user = await blockchain.treasury('user');
         const nftRoot = 'https://anycraft-public.s3.eu-north-1.amazonaws.com/nft';
 
         nftCollection = blockchain.openContract(
             AnycraftNftCollection.createFromConfig(
                 {
-                    adminContractAddress: admin.address,
                     anycraftPublicKey: anycraftKeyPair.publicKey,
                     ownerAddress: deployer.address,
                     collectionContent: nftRoot + `${nftRoot}/assets/collection.json`,
                     commonContent: `${nftRoot}/items/`,
                     nextItemIndex: 0,
                     royaltyParams: {
-                        royaltyFactor: 0,
+                        royaltyFactor: 5,
                         royaltyBase: 100,
-                        royaltyAddress: admin.address,
+                        royaltyAddress: deployer.address,
                     },
                     nftItemCode,
                     fee,

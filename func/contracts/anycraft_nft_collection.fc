@@ -15,17 +15,12 @@
 ;; NFT collection smart contract v2
 ;; + return collection balance (op = 5)
 ;; + support mint nft with next_item_id (op = 2 + int flag after query_id)
-;; + second owner and change of it (op = 6)
 
-(slice, int, cell, cell, cell, int, slice, int) load_data() inline {
+(slice, int, cell, cell, cell, int, int) load_data() inline {
     var ds = get_data().begin_parse();
     var owner = ds~load_msg_addr();
     var next_id = ds~load_uint(64);
     var anycraft_public_key = ds~load_uint(256);
-    var second_owner = owner;
-    if (ds.slice_data_empty?() == false) {
-        second_owner = ds~load_msg_addr();
-    }
     var fee = ds~load_coins();
     return
     (owner, ;; owner_address
@@ -34,17 +29,15 @@
         ds~load_ref(), ;; nft_item_code
         ds~load_ref(),  ;; royalty_params
         anycraft_public_key,
-        second_owner,
         fee
     );
 }
 
-() save_data(slice owner_address, int next_item_index, cell content, cell nft_item_code, cell royalty_params, int anycraft_public_key, slice second_owner, int fee) impure inline {
+() save_data(slice owner_address, int next_item_index, cell content, cell nft_item_code, cell royalty_params, int anycraft_public_key, int fee) impure inline {
     set_data(begin_cell()
         .store_slice(owner_address)
         .store_uint(next_item_index, 64)
         .store_uint(anycraft_public_key, 256)
-        .store_slice(second_owner)
         .store_coins(fee)
         .store_ref(content)
         .store_ref(nft_item_code)
@@ -126,7 +119,7 @@ slice calculate_nft_item_address(int wc, cell state_init) {
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
 
-    var (owner_address, next_item_index, content, nft_item_code, royalty_params, anycraft_public_key, second_owner_address, fee) = load_data();
+    var (owner_address, next_item_index, content, nft_item_code, royalty_params, anycraft_public_key, fee) = load_data();
 
     if (op == op::get_royalty_params()) {
         send_royalty_params(sender_address, query_id, royalty_params.begin_parse());
@@ -151,7 +144,7 @@ slice calculate_nft_item_address(int wc, cell state_init) {
         deploy_nft_item(item_index, nft_item_code, amount, mint_cs~load_ref());
         if (is_last) {
             next_item_index += 1;
-            save_data(owner_address, next_item_index, content, nft_item_code, royalty_params, anycraft_public_key, second_owner_address, fee);
+            save_data(owner_address, next_item_index, content, nft_item_code, royalty_params, anycraft_public_key, fee);
         }
 
         send_message_nobounce(fee, owner_address, begin_cell().end_cell());
@@ -159,7 +152,7 @@ slice calculate_nft_item_address(int wc, cell state_init) {
         return ();
     }
 
-    throw_unless(401, (equal_slices(sender_address, owner_address) | equal_slices(sender_address, second_owner_address)));
+    throw_unless(401, equal_slices(sender_address, owner_address));
 
     if (op == 2) {
         ;; batch deploy of new nfts
@@ -188,21 +181,18 @@ slice calculate_nft_item_address(int wc, cell state_init) {
                 }
             }
         } until (~ f?);
-        save_data(owner_address, next_item_index, content, nft_item_code, royalty_params, anycraft_public_key, second_owner_address, fee);
+        save_data(owner_address, next_item_index, content, nft_item_code, royalty_params, anycraft_public_key, fee);
         return ();
     }
     if (op == 3) {
         ;; change owner
-        ;; second owner address cant change "primary address"
-        throw_unless(4001, equal_slices(sender_address, owner_address));
         slice new_owner = in_msg_body~load_msg_addr();
-        ;; also change second owner address if owner change
-        save_data(new_owner, next_item_index, content, nft_item_code, royalty_params, anycraft_public_key, new_owner, fee);
+        save_data(new_owner, next_item_index, content, nft_item_code, royalty_params, anycraft_public_key, fee);
         return ();
     }
     if (op == 4) {
         ;; change content
-        save_data(owner_address, next_item_index, in_msg_body~load_ref(), nft_item_code, in_msg_body~load_ref(), anycraft_public_key, second_owner_address, fee);
+        save_data(owner_address, next_item_index, in_msg_body~load_ref(), nft_item_code, in_msg_body~load_ref(), anycraft_public_key, fee);
         return ();
     }
     if (op == 5) {
@@ -219,21 +209,15 @@ slice calculate_nft_item_address(int wc, cell state_init) {
         return ();
     }
     if (op == 6) {
-        ;; change owner
-        slice new_second_owner = in_msg_body~load_msg_addr();
-        save_data(owner_address, next_item_index, content, nft_item_code, royalty_params, anycraft_public_key, new_second_owner, fee);
-        return ();
-    }
-    if (op == 7) {
         ;; change fee
         int new_fee = in_msg_body~load_coins();
-        save_data(owner_address, next_item_index, content, nft_item_code, royalty_params, anycraft_public_key, second_owner_address, new_fee);
+        save_data(owner_address, next_item_index, content, nft_item_code, royalty_params, anycraft_public_key, new_fee);
         return();
     }
-    if (op == 8) {
+    if (op == 7) {
         ;; change public key
         int new_anycraft_public_key = in_msg_body~load_uint(256);
-        save_data(owner_address, next_item_index, content, nft_item_code, royalty_params, new_anycraft_public_key, second_owner_address, fee);
+        save_data(owner_address, next_item_index, content, nft_item_code, royalty_params, new_anycraft_public_key, fee);
         return();
     }
     throw(0xffff);
@@ -242,25 +226,25 @@ slice calculate_nft_item_address(int wc, cell state_init) {
 ;; Get methods
 
 (int, cell, slice) get_collection_data() method_id {
-    var (owner_address, next_item_index, content, _, _, _, _, _) = load_data();
+    var (owner_address, next_item_index, content, _, _, _, _) = load_data();
     slice cs = content.begin_parse();
     return (next_item_index, cs~load_ref(), owner_address);
 }
 
 slice get_nft_address_by_index(int index) method_id {
-    var (_, _, _, nft_item_code, _, _, _, _) = load_data();
+    var (_, _, _, nft_item_code, _, _, _) = load_data();
     cell state_init = calculate_nft_item_state_init(index, nft_item_code);
-    return calculate_nft_item_address(0, state_init);
+    return calculate_nft_item_address(workchain(), state_init);
 }
 
 (int, int, slice) royalty_params() method_id {
-    var (_, _, _, _, royalty, _, _, _) = load_data();
+    var (_, _, _, _, royalty, _, _) = load_data();
     slice rs = royalty.begin_parse();
     return (rs~load_uint(16), rs~load_uint(16), rs~load_msg_addr());
 }
 
 cell get_nft_content(int index, cell individual_nft_content) method_id {
-    var (_, _, content, _, _, _, _, _) = load_data();
+    var (_, _, content, _, _, _, _) = load_data();
     slice cs = content.begin_parse();
     cs~load_ref();
     slice common_content = cs~load_ref().begin_parse();
@@ -271,17 +255,12 @@ cell get_nft_content(int index, cell individual_nft_content) method_id {
         .end_cell());
 }
 
-(slice) get_second_owner_address() method_id {
-    var (_, _, _, _, _, _, second_owner_address, _) = load_data();
-    return (second_owner_address);
-}
-
 (int) get_mint_fee() method_id {
-    var (_, _, _, _, _, _, _, fee) = load_data();
+    var (_, _, _, _, _, _, fee) = load_data();
     return (fee);
 }
 
 (int) get_anycraft_public_key() method_id {
-    var (_, _, _, _, _, anycraft_public_key, _, _) = load_data();
+    var (_, _, _, _, _, anycraft_public_key, _) = load_data();
     return (anycraft_public_key);
 }
