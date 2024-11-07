@@ -30,17 +30,15 @@ export type AnycraftNftCollectionConfig = {
 };
 
 export function buildAnycraftNftCollectionContentCell(collectionContent: string, commonContent: string): Cell {
-    let contentCell = beginCell();
+    const encodedCollectionContent = encodeOffChainContent(collectionContent);
+    const commonContentCell = beginCell()
+        .storeBuffer(Buffer.from(commonContent))
+        .asCell()
 
-    let encodedCollectionContent = encodeOffChainContent(collectionContent);
-
-    let commonContentCell = beginCell();
-    commonContentCell.storeBuffer(Buffer.from(commonContent));
-
-    contentCell.storeRef(encodedCollectionContent);
-    contentCell.storeRef(commonContentCell.asCell());
-
-    return contentCell.endCell();
+    return beginCell()
+        .storeRef(encodedCollectionContent)
+        .storeRef(commonContentCell)
+        .endCell()
 }
 
 export function anycraftNftCollectionConfigToCell(config: AnycraftNftCollectionConfig): Cell {
@@ -154,7 +152,7 @@ export class AnycraftNftCollection implements Contract {
         });
     }
 
-    async sendChangeMainOwner(provider: ContractProvider, via: Sender, new_main_owner: Address) {
+    async sendChangeOwner(provider: ContractProvider, via: Sender, new_main_owner: Address) {
         const body = beginCell()
             .storeUint(3, 32)
             .storeUint(0, 64)

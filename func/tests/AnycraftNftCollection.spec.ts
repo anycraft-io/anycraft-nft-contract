@@ -1,9 +1,16 @@
-import {Blockchain, SandboxContract, TreasuryContract} from '@ton/sandbox';
-import {Cell, toNano} from '@ton/core';
+import {Blockchain, SandboxContract, SendMessageResult, TreasuryContract} from '@ton/sandbox';
+import {Address, Cell, toNano} from '@ton/core';
 import {AnycraftNftCollection, nftMessageToCell} from '../wrappers/AnycraftNftCollection';
 import '@ton/test-utils';
 import {compile} from '@ton/blueprint';
-import {getSecureRandomBytes, KeyPair, keyPairFromSeed, sign} from '@ton/crypto';
+import {
+    getSecureRandomBytes,
+    getSecureRandomNumber,
+    KeyPair,
+    keyPairFromSeed,
+    newSecurePassphrase,
+    sign
+} from '@ton/crypto';
 
 describe('AnycraftNftCollection', () => {
     let code: Cell;
@@ -71,11 +78,7 @@ describe('AnycraftNftCollection', () => {
 
         const mintResult = await mint(nftCell);
 
-        expect(mintResult.transactions).toHaveTransaction({
-            from: user.address,
-            to: nftCollection.address,
-            success: true,
-        });
+        assertSuccess(mintResult, user.address)
     });
 
     it('should not mint nft because wrong signature', async () => {
@@ -86,12 +89,7 @@ describe('AnycraftNftCollection', () => {
 
         const mintResult = await nftCollection.sendDeployNft(user.getSender(), toNano('0.5'), signature, nftCell);
 
-        expect(mintResult.transactions).toHaveTransaction({
-            from: user.address,
-            to: nftCollection.address,
-            exitCode: 35,
-            success: false,
-        });
+        assertError(mintResult, 35, user.address)
     });
 
     it('should not mint nft because value lower than fee', async () => {
@@ -99,12 +97,7 @@ describe('AnycraftNftCollection', () => {
 
         const mintResult = await mint(nftCell, '0.449');
 
-        expect(mintResult.transactions).toHaveTransaction({
-            from: user.address,
-            to: nftCollection.address,
-            success: false,
-            exitCode: 46,
-        });
+        assertError(mintResult, 46, user.address)
     });
 
     it('should not mint nft because msg_value - fee < amount (to nft)', async () => {
@@ -112,12 +105,7 @@ describe('AnycraftNftCollection', () => {
 
         const mintResult = await mint(nftCell);
 
-        expect(mintResult.transactions).toHaveTransaction({
-            from: user.address,
-            to: nftCollection.address,
-            success: false,
-            exitCode: 48,
-        });
+        assertError(mintResult, 48, user.address)
     });
 
     it('should send fees to owner', async () => {
@@ -137,11 +125,7 @@ describe('AnycraftNftCollection', () => {
         const newFee = '0.99';
         const changeFeeResult = await nftCollection.sendChangeFee(deployer.getSender(), toNano(newFee));
 
-        expect(changeFeeResult.transactions).toHaveTransaction({
-            from: deployer.address,
-            to: nftCollection.address,
-            success: true,
-        });
+        assertSuccess(changeFeeResult, deployer.address)
 
         const actualFee = (await nftCollection.getMintFee()).fee;
         expect(actualFee).toEqual(toNano(newFee));
@@ -150,12 +134,7 @@ describe('AnycraftNftCollection', () => {
     it('should not change fee because of not owner', async () => {
         const changeFeeResult = await nftCollection.sendChangeFee(user.getSender(), toNano('1'));
 
-        expect(changeFeeResult.transactions).toHaveTransaction({
-            from: user.address,
-            to: nftCollection.address,
-            success: false,
-            exitCode: 401,
-        });
+        assertError(changeFeeResult, 401, user.address)
     });
 
     it('should not mint nft because value lower than new fee', async () => {
@@ -165,12 +144,7 @@ describe('AnycraftNftCollection', () => {
         await nftCollection.sendChangeFee(deployer.getSender(), toNano(newFee));
         const mintResult = await mint(nftCell, '0.9');
 
-        expect(mintResult.transactions).toHaveTransaction({
-            from: user.address,
-            to: nftCollection.address,
-            success: false,
-            exitCode: 46,
-        });
+        assertError(mintResult, 46, user.address)
     });
 
     it('should change public key', async () => {
@@ -178,11 +152,7 @@ describe('AnycraftNftCollection', () => {
         const newKeypair = keyPairFromSeed(seed);
         const txResult = await nftCollection.sendChangePublicKey(deployer.getSender(), newKeypair.publicKey);
 
-        expect(txResult.transactions).toHaveTransaction({
-            from: deployer.address,
-            to: nftCollection.address,
-            success: true,
-        });
+        assertSuccess(txResult, deployer.address)
 
         function bufferToBigInt(buffer: Buffer): bigint {
             return BigInt('0x' + buffer.toString('hex'));
@@ -192,18 +162,96 @@ describe('AnycraftNftCollection', () => {
         expect(newPublicKey).toEqual(bufferToBigInt(newKeypair.publicKey));
     });
 
-    it('should change owner', async () => {
-        const txResult = await nftCollection.sendChangeMainOwner(deployer.getSender(), user.address);
+    it('should not change public key because of not owner', async () => {
+        const seed = await getSecureRandomBytes(32);
+        const newKeypair = keyPairFromSeed(seed);
 
-        expect(txResult.transactions).toHaveTransaction({
-            from: deployer.address,
-            to: nftCollection.address,
-            success: true,
-        });
+        const txResult = await nftCollection.sendChangePublicKey(user.getSender(), newKeypair.publicKey);
+
+        assertError(txResult, 401, user.address)
+    });
+
+    it('should mint using new public key', async () => {
+        const seed = await getSecureRandomBytes(32);
+        const newKeypair = keyPairFromSeed(seed);
+        const nftCell = await newNftCell();
+        const signature = sign(nftCell.hash(), newKeypair.secretKey);
+
+        await nftCollection.sendChangePublicKey(deployer.getSender(), newKeypair.publicKey);
+        const mintResult = await nftCollection.sendDeployNft(user.getSender(), toNano('0.5'), signature, nftCell);
+
+        assertSuccess(mintResult, user.address)
+    });
+
+    it('should change owner', async () => {
+        const txResult = await nftCollection.sendChangeOwner(deployer.getSender(), user.address);
+
+        assertSuccess(txResult, deployer.address)
 
         const newOwner = (await nftCollection.getCollectionData()).ownerAddress;
         expect(newOwner).toEqualAddress(user.address);
     });
+
+    it('should not change owner because of sender is not owner', async () => {
+        const txResult = await nftCollection.sendChangeOwner(user.getSender(), user.address);
+
+        assertError(txResult, 401, user.address)
+    });
+
+    it('should change content', async () => {
+        const content = await newRandomContent()
+
+        const txResult = await nftCollection.sendChangeContent(deployer.getSender(), content);
+
+        assertSuccess(txResult, deployer.address)
+    });
+
+    it('should not change content because of not owner', async () => {
+        const content = await newRandomContent()
+
+        const txResult = await nftCollection.sendChangeContent(user.getSender(), content);
+
+        assertError(txResult, 401, user.address)
+    });
+
+    it('should withdraw', async () => {
+        const txResult = await nftCollection.sendWithdraw(deployer.getSender());
+
+        assertSuccess(txResult, deployer.address)
+    });
+
+    it('should not withdraw because of not owner', async () => {
+        const txResult = await nftCollection.sendWithdraw(user.getSender());
+
+        assertError(txResult, 401, user.address)
+    });
+
+    function assertSuccess(txResult: SendMessageResult, from: Address) {
+        expect(txResult.transactions).toHaveTransaction({
+            from: from,
+            to: nftCollection.address,
+            success: true,
+        });
+    }
+
+    function assertError(txResult: SendMessageResult, exitCode: number, from: Address) {
+        expect(txResult.transactions).toHaveTransaction({
+            from: from,
+            to: nftCollection.address,
+            success: false,
+            exitCode: exitCode,
+        });
+    }
+
+    async function newRandomContent() {
+        return {
+            collectionContent: await newSecurePassphrase(),
+            commonContent: await newSecurePassphrase(),
+            royaltyFactor: await getSecureRandomNumber(0, 100),
+            royaltyBase: 100,
+            royaltyAddress: (await blockchain.treasury('royaltyOwner')).address
+        }
+    }
 
     async function newNftCell(networkFee: string = '0.05') {
         const nextItemIndex = (await nftCollection.getCollectionData()).nextItemIndex;
