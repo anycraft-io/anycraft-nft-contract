@@ -11,6 +11,7 @@ import {
     newSecurePassphrase,
     sign
 } from '@ton/crypto';
+import {equal} from "node:assert";
 
 describe('AnycraftNftCollection', () => {
     let code: Cell;
@@ -81,6 +82,16 @@ describe('AnycraftNftCollection', () => {
         assertSuccess(mintResult, user.address)
     });
 
+    it('mint should increase next item index', async () => {
+        const nextItemIndex = (await nftCollection.getCollectionData()).nextItemIndex;
+        const nftCell = await newNftCell();
+
+        await mint(nftCell);
+        const nextItemIndexAfterMint = (await nftCollection.getCollectionData()).nextItemIndex;
+
+        expect(nextItemIndexAfterMint).toEqual(nextItemIndex + 1)
+    });
+
     it('should not mint nft because wrong signature', async () => {
         const nftCell = await newNftCell();
         const seed = await getSecureRandomBytes(32);
@@ -106,6 +117,18 @@ describe('AnycraftNftCollection', () => {
         const mintResult = await mint(nftCell);
 
         assertError(mintResult, 48, user.address)
+    });
+
+    it('should not mint duplicate', async () => {
+        const nftCell = await newNftCell();
+
+        await mint(nftCell);
+        const nextItemIndex = (await nftCollection.getCollectionData()).nextItemIndex;
+        await mint(nftCell);
+        const nextItemIndexAfterMint = (await nftCollection.getCollectionData()).nextItemIndex;
+
+
+        expect(nextItemIndexAfterMint).toEqual(nextItemIndex)
     });
 
     it('should send fees to owner', async () => {
