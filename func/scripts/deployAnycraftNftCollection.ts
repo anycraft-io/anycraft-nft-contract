@@ -8,7 +8,7 @@ export async function run(provider: NetworkProvider) {
     const seed = Buffer.from(key.seedHex, "hex");
     const anycraftKeyPair = keyPairFromSeed(seed);
 
-    const root = 'https://anycraft-public.s3.eu-north-1.amazonaws.com';
+    const root = 'https://public.anycraft.io';
     const nftDir = 'testnet' == provider.network() ? 'nft-stage' : 'nft'
     const nftCollection = provider.open(
         AnycraftNftCollection.createFromConfig(

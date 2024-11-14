@@ -37,7 +37,7 @@ describe('AnycraftNftCollection', () => {
 
         deployer = await blockchain.treasury('deployer');
         user = await blockchain.treasury('user');
-        const nftRoot = 'https://anycraft-public.s3.eu-north-1.amazonaws.com/nft';
+        const nftRoot = 'https://public.anycraft.io/nft';
 
         nftCollection = blockchain.openContract(
             AnycraftNftCollection.createFromConfig(
